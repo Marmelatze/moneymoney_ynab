@@ -1,3 +1,8 @@
+# MoneyMoney Sync to YNAB
+
+Can Sync transactions from MoneyMoney directly to YNAB (Web). Must be run on the same Mac as MoneyMoney is running.
+
+
 # Install
 
 ```
