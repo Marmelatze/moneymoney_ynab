@@ -2,7 +2,7 @@
 namespace App\Ynab\Model;
 
 /**
- * Class Budget
+ * Class Budget.
  */
 class Budget
 {
@@ -15,17 +15,11 @@ class Budget
         $this->name = $name;
     }
 
-    /**
-     * @return string
-     */
     public function getId(): string
     {
         return $this->id;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;

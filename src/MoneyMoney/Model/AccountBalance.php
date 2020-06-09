@@ -2,7 +2,7 @@
 namespace App\MoneyMoney\Model;
 
 /**
- * Class AccountBalance
+ * Class AccountBalance.
  */
 class AccountBalance
 {
@@ -15,17 +15,11 @@ class AccountBalance
         $this->currency = $currency;
     }
 
-    /**
-     * @return float
-     */
     public function getAmount(): float
     {
         return $this->amount;
     }
 
-    /**
-     * @return string
-     */
     public function getCurrency(): string
     {
         return $this->currency;

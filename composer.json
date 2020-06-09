@@ -17,6 +17,9 @@
         "symfony/yaml": "5.1.*"
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^2.16",
+        "phpstan/phpstan": "^0.12.27",
+        "phpstan/phpstan-symfony": "^0.12.6",
         "symfony/maker-bundle": "^1.19"
     },
     "config": {
@@ -54,7 +57,15 @@
             "@auto-scripts"
         ],
         "post-update-cmd": [
-            "@auto-scripts"
+            "@auto-script"
+        ],
+        "php-cs-fixer": "php-cs-fixer --allow-risky=yes",
+        "phpstan": "phpstan analyse -c phpstan.neon",
+        "phpunit": "bin/phpunit",
+        "test": [
+            "@php-cs-fixer fix",
+            "@phpstan",
+            "@phpunit"
         ]
     },
     "conflict": {

@@ -2,7 +2,7 @@
 namespace App\MoneyMoney\Model;
 
 /**
- * Class Account
+ * Class Account.
  */
 class Account
 {
@@ -24,41 +24,26 @@ class Account
         $this->portfolio = $portfolio;
     }
 
-    /**
-     * @return string
-     */
     public function getUuid(): string
     {
         return $this->uuid;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @return AccountBalance|null
-     */
     public function getBalance(): ?AccountBalance
     {
         return current($this->balance);
     }
 
-    /**
-     * @return bool
-     */
     public function isGroup(): bool
     {
         return $this->group;
     }
 
-    /**
-     * @return bool
-     */
     public function isPortfolio(): bool
     {
         return $this->portfolio;

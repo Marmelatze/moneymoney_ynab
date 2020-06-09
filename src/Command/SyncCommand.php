@@ -1,14 +1,10 @@
 <?php
-
 namespace App\Command;
 
-use App\MoneyMoney\Model\Account;
 use App\MoneyMoney\MoneyMoney;
 use App\Syncer;
-use App\Ynab\YnabApi;
 use App\Ynab\YnabApiFactory;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,13 +17,9 @@ class SyncCommand extends Command
      * @var MoneyMoney
      */
     private $moneyMoney;
-    /**
-     * @var YnabApiFactory
-     */
+
     private YnabApiFactory $ynabApiFactory;
-    /**
-     * @var Syncer
-     */
+
     private Syncer $syncer;
 
     public function __construct(Syncer $syncer)

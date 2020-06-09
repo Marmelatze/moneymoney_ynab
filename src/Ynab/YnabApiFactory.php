@@ -2,13 +2,10 @@
 namespace App\Ynab;
 
 /**
- * Class YnabApiFactory
+ * Class YnabApiFactory.
  */
 class YnabApiFactory
 {
-    /**
-     * @var Serializer
-     */
     private Serializer $serializer;
 
     public function __construct(Serializer $serializer)

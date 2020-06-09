@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Command;
 
 use App\MoneyMoney\MoneyMoney;
@@ -16,17 +15,11 @@ class SetupCommand extends Command
 {
     protected static $defaultName = 'app:setup';
     private string $projectDir;
-    /**
-     * @var MoneyMoney
-     */
+
     private MoneyMoney $moneyMoney;
-    /**
-     * @var Filesystem
-     */
+
     private Filesystem $filesystem;
-    /**
-     * @var YnabApiFactory
-     */
+
     private YnabApiFactory $ynabApiFactory;
 
     public function __construct(MoneyMoney $moneyMoney, Filesystem $filesystem, YnabApiFactory $ynabApiFactory)
@@ -36,7 +29,6 @@ class SetupCommand extends Command
         $this->filesystem = $filesystem;
         $this->ynabApiFactory = $ynabApiFactory;
     }
-
 
     protected function configure()
     {
@@ -95,7 +87,7 @@ class SetupCommand extends Command
                 continue;
             }
             $value = $mapping[$account->getUuid()] ?? null;
-            $sync = $io->confirm('Sync account '.$account->getName(), $value !== false);
+            $sync = $io->confirm('Sync account '.$account->getName(), false !== $value);
             if (!$sync) {
                 $mapping[$account->getUuid()] = false;
                 continue;

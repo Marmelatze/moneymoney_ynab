@@ -9,18 +9,15 @@ use App\Ynab\YnabApiFactory;
 use Psr\Log\LoggerInterface;
 
 /**
- * Class Syncer
+ * Class Syncer.
  */
 class Syncer
 {
-    const IMPORT_PREFIX = "MM:";
+    const IMPORT_PREFIX = 'MM:';
     private LoggerInterface $logger;
     private MoneyMoney $moneyMoney;
     private YnabApiFactory $ynabApiFactory;
     private Ynab\YnabApi $api;
-    /**
-     * @var mixed
-     */
     private string $budget;
     /**
      * @var Payee[]
@@ -56,8 +53,8 @@ class Syncer
         $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-4days'));
         foreach ($ynabTransactions as $transaction) {
             $id = $transaction->getImportId();
-            if (null === $id || substr($id, 0, strlen(self::IMPORT_PREFIX)) !== self::IMPORT_PREFIX) {
-                $id = $transaction->getDate()->format('Y-m-d').'|'.$transaction->getPayeeName().'|'.$transaction->getMemo().'|'.round($transaction->getAmount()/1000,2);
+            if (null === $id || self::IMPORT_PREFIX !== mb_substr($id, 0, \mb_strlen(self::IMPORT_PREFIX))) {
+                $id = $transaction->getDate()->format('Y-m-d').'|'.$transaction->getPayeeName().'|'.$transaction->getMemo().'|'.round($transaction->getAmount() / 1000, 2);
             }
             $this->ynabTransactions[$transaction->getAccountId()][$id] = $transaction;
         }
@@ -79,6 +76,7 @@ class Syncer
         $this->logger->info('Syncing '.$sourceAccount->getName().' => '.$targetAccount->getName());
         if ($sourceAccount->isPortfolio()) {
             $this->syncAmount($sourceAccount, $targetAccount);
+
             return;
         }
         $bulkTransactions = [];
@@ -101,14 +99,14 @@ class Syncer
             if (null !== $ynabTransaction) {
                 continue;
             }
-            $this->logger->info('Creating transaction '. $transaction->getName().' ' . $transaction->getPurpose(). ' ('.$transaction->getAmount().')');
-            $ynabTransaction = new Transaction($targetAccount->getId(), $transaction->getValueDate(), $transaction->getAmount() * 1000);
+            $this->logger->info('Creating transaction '.$transaction->getName().' '.$transaction->getPurpose().' ('.$transaction->getAmount().')');
+            $ynabTransaction = new Transaction($targetAccount->getId(), $transaction->getValueDate(), (int) $transaction->getAmount() * 1000);
             $ynabTransaction->setImportId(self::IMPORT_PREFIX.$transaction->getId());
             $ynabTransaction->setPayeeName($transaction->getName());
             $ynabTransaction->setMemo($transaction->getPurpose());
-            $ynabTransaction->setCleared("cleared");
+            $ynabTransaction->setCleared('cleared');
 
-            if (substr($ynabTransaction->getPayeeName(), 0, 6) == "PayPal" && preg_match('/Ihr Einkauf bei (.*?)$/si', $ynabTransaction->getMemo(), $matches)) {
+            if ('PayPal' == mb_substr($ynabTransaction->getPayeeName(), 0, 6) && preg_match('/Ihr Einkauf bei (.*?)$/si', $ynabTransaction->getMemo(), $matches)) {
                 $ynabTransaction->setPayeeName($matches[1]);
                 $ynabTransaction->setMemo(null);
             }
@@ -132,9 +130,9 @@ class Syncer
         $transaction = new Transaction(
             $targetAccount->getId(),
             new \DateTime(),
-            round(($sourceAccount->getBalance()->getAmount() - $targetAccount->getBalance())*1000, 0)
+            (int) round(($sourceAccount->getBalance()->getAmount() - $targetAccount->getBalance()) * 1000, 0)
         );
-        $transaction->setPayeeId($this->getPayee("Manual Balance Adjustment")->getId());
+        $transaction->setPayeeId($this->getPayee('Manual Balance Adjustment')->getId());
         $transaction->setApproved(true);
         $this->api->newTransaction($this->budget, $transaction);
     }
@@ -142,12 +140,11 @@ class Syncer
     private function getPayee(string $name): ?Payee
     {
         if (empty($this->payees)) {
-            foreach($this->api->getPayees($this->budget) as $payee) {
+            foreach ($this->api->getPayees($this->budget) as $payee) {
                 $this->payees[$payee->getName()] = $payee;
             }
         }
 
         return $this->payees[$name] ?? null;
     }
-
 }

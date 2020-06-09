@@ -2,7 +2,7 @@
 namespace App\Ynab\Model;
 
 /**
- * Class Account
+ * Class Account.
  */
 class Account
 {
@@ -19,33 +19,21 @@ class Account
         $this->balance = $balance / 1000;
     }
 
-    /**
-     * @return string
-     */
     public function getId(): string
     {
         return $this->id;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @return string
-     */
     public function getType(): string
     {
         return $this->type;
     }
 
-    /**
-     * @return float
-     */
     public function getBalance(): float
     {
         return $this->balance;

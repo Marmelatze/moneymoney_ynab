@@ -2,7 +2,7 @@
 namespace App\Ynab\Model;
 
 /**
- * Class Payee
+ * Class Payee.
  */
 class Payee
 {
@@ -19,33 +19,21 @@ class Payee
         $this->deleted = $deleted;
     }
 
-    /**
-     * @return string
-     */
     public function getId(): string
     {
         return $this->id;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @return string|null
-     */
     public function getTransferAccountId(): ?string
     {
         return $this->transferAccountId;
     }
 
-    /**
-     * @return bool
-     */
     public function isDeleted(): bool
     {
         return $this->deleted;

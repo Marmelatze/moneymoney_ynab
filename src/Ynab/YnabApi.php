@@ -9,7 +9,7 @@ use GuzzleHttp\Client;
 use Symfony\Component\Serializer\Normalizer\UnwrappingDenormalizer;
 
 /**
- * Class YnabApi
+ * Class YnabApi.
  */
 class YnabApi
 {
@@ -28,8 +28,9 @@ class YnabApi
     }
 
     /**
-     * @return Budget[]
      * @throws \GuzzleHttp\Exception\GuzzleException
+     *
+     * @return Budget[]
      */
     public function getBudgets(): array
     {
@@ -46,10 +47,9 @@ class YnabApi
     }
 
     /**
-     * @param string $budget
+     * @throws \GuzzleHttp\Exception\GuzzleException
      *
      * @return Account[]
-     * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function getAccounts(string $budget)
     {
@@ -65,15 +65,16 @@ class YnabApi
     }
 
     /**
-     * @return Transaction[]
      * @throws \GuzzleHttp\Exception\GuzzleException
+     *
+     * @return Transaction[]
      */
     public function getTransactions(string $budget, \DateTimeInterface $since = null)
     {
         $result = $this->httpClient->request('GET', "budgets/{$budget}/transactions", [
             'query' => [
-                'since_date' => $since !== null ? $since->format('Y-m-d') : null,
-            ]
+                'since_date' => null !== $since ? $since->format('Y-m-d') : null,
+            ],
         ]);
         $content = $result->getBody()->getContents();
 
@@ -97,7 +98,6 @@ class YnabApi
         );
     }
 
-
     public function newTransactions(string $budget, array $transactions)
     {
         $json = $this->serializer->normalize($transactions, 'json');
@@ -111,10 +111,9 @@ class YnabApi
     }
 
     /**
-     * @param string $budget
+     * @throws \GuzzleHttp\Exception\GuzzleException
      *
      * @return Payee[]
-     * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function getPayees(string $budget)
     {
@@ -128,6 +127,4 @@ class YnabApi
             [UnwrappingDenormalizer::UNWRAP_PATH => '[data][payees]']
         );
     }
-
-
 }
