@@ -100,7 +100,7 @@ class Syncer
                 continue;
             }
             $this->logger->info('Creating transaction '.$transaction->getName().' '.$transaction->getPurpose().' ('.$transaction->getAmount().')');
-            $ynabTransaction = new Transaction($targetAccount->getId(), $transaction->getValueDate(), (int) $transaction->getAmount() * 1000);
+            $ynabTransaction = new Transaction($targetAccount->getId(), $transaction->getValueDate(), (int) ($transaction->getAmount() * 1000));
             $ynabTransaction->setImportId(self::IMPORT_PREFIX.$transaction->getId());
             $ynabTransaction->setPayeeName($transaction->getName());
             $ynabTransaction->setMemo($transaction->getPurpose());
