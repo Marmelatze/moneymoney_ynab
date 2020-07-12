@@ -6,6 +6,7 @@ use App\MoneyMoney\MoneyMoney;
 use App\Ynab\Model\Payee;
 use App\Ynab\Model\Transaction;
 use App\Ynab\YnabApiFactory;
+use GuzzleHttp\Exception\ClientException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -13,7 +14,7 @@ use Psr\Log\LoggerInterface;
  */
 class Syncer
 {
-    const IMPORT_PREFIX = 'MM:';
+    const IMPORT_PREFIX = 'MM';
     private LoggerInterface $logger;
     private MoneyMoney $moneyMoney;
     private YnabApiFactory $ynabApiFactory;
@@ -50,11 +51,11 @@ class Syncer
             $ynabAccountMap[$account->getId()] = $account;
         }
 
-        $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-4days'));
+        $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-5days'));
         foreach ($ynabTransactions as $transaction) {
             $id = $transaction->getImportId();
-            if (null === $id || self::IMPORT_PREFIX !== mb_substr($id, 0, \mb_strlen(self::IMPORT_PREFIX))) {
-                $id = $transaction->getDate()->format('Y-m-d').'|'.$transaction->getPayeeName().'|'.$transaction->getMemo().'|'.round($transaction->getAmount() / 1000, 2);
+            if (null === $id) {
+                continue;
             }
             $this->ynabTransactions[$transaction->getAccountId()][$id] = $transaction;
         }
@@ -79,42 +80,67 @@ class Syncer
 
             return;
         }
-        $bulkTransactions = [];
-        $transactions = $this->moneyMoney->getTransactions($sourceAccount, new \DateTime('-3days'));
+        $newTransactions = [];
+        $transactions = $this->moneyMoney->getTransactions($sourceAccount, new \DateTime('-5days'));
         foreach ($transactions as $transaction) {
             if (!$transaction->isBooked()) {
                 continue;
             }
-            $ynabTransaction = null;
-            // find by import ID
-            if (isset($this->ynabTransactions[$targetAccount->getId()][self::IMPORT_PREFIX.$transaction->getId()])) {
-                $ynabTransaction = $this->ynabTransactions[$targetAccount->getId()][self::IMPORT_PREFIX.$transaction->getId()];
-            }
-            if (null === $ynabTransaction) {
-                $id = $transaction->getValueDate()->format('Y-m-d').'|'.$transaction->getName().'|'.$transaction->getPurpose().'|'.$transaction->getAmount();
-                if (isset($this->ynabTransactions[$targetAccount->getId()][$id])) {
-                    $ynabTransaction = $this->ynabTransactions[$targetAccount->getId()][$id];
-                }
-            }
-            if (null !== $ynabTransaction) {
+            if ($transaction->getValueDate() >= new \DateTime('tomorrow')) {
                 continue;
             }
-            $this->logger->info('Creating transaction '.$transaction->getName().' '.$transaction->getPurpose().' ('.$transaction->getAmount().')');
-            $ynabTransaction = new Transaction($targetAccount->getId(), $transaction->getValueDate(), (int) ($transaction->getAmount() * 1000));
-            $ynabTransaction->setImportId(self::IMPORT_PREFIX.$transaction->getId());
+            $ynabTransaction = null;
+            // find by import ID
+            $id = implode(':', [
+                self::IMPORT_PREFIX,
+                $transaction->getId(),
+                (int)($transaction->getAmount()*1000),
+                $transaction->getValueDate()->format('Y-m-d')
+            ]);
+            if (isset($this->ynabTransactions[$targetAccount->getId()][$id])) {
+                $ynabTransaction = $this->ynabTransactions[$targetAccount->getId()][$id];
+            }
+            if (null === $ynabTransaction) {
+                $this->logger->info('Creating transaction '.$transaction->getValueDate()->format('Y-m-d').' '.$transaction->getName().' '.$transaction->getPurpose().' ('.$transaction->getAmount().'|'.$transaction->getId());
+                $ynabTransaction = new Transaction($targetAccount->getId(), $transaction->getValueDate(), (int) ($transaction->getAmount() * 1000));
+            }
+            $ynabTransaction->setImportId($id);
             $ynabTransaction->setPayeeName($transaction->getName());
-            $ynabTransaction->setMemo($transaction->getPurpose());
-            $ynabTransaction->setCleared('cleared');
+            if (strlen($ynabTransaction->getMemo()) == 0) {
+                $ynabTransaction->setMemo($transaction->getPurpose());
+            }
+            if (strlen($ynabTransaction->getMemo()) == 0) {
+                $ynabTransaction->setMemo($transaction->getMandateReference().','.$transaction->getEndToEndReference());
+            }
+            $ynabTransaction->setCleared($transaction->isBooked() ? 'cleared' : 'uncleared');
 
             if ('PayPal' == mb_substr($ynabTransaction->getPayeeName(), 0, 6) && preg_match('/Ihr Einkauf bei (.*?)$/si', $ynabTransaction->getMemo(), $matches)) {
                 $ynabTransaction->setPayeeName($matches[1]);
                 $ynabTransaction->setMemo(null);
             }
+            if (null === $ynabTransaction->getId()) {
+                #$newTransactions[] = $ynabTransaction;
+            #    $this->api->newTransaction($this->budget, $ynabTransaction);
+                try {
+                    $this->api->newTransaction($this->budget, $ynabTransaction);
+                } catch (ClientException $e) {
+                    if ($e->getResponse()->getStatusCode() == 409) {
+                        $this->logger->info('Transation already exists. Updating');
+                        $updateTransactions[] = $ynabTransaction;
+                    } else {
+                        throw $e;
+                    }
+                }
 
-            $bulkTransactions[] = $ynabTransaction;
+            } else {
+                $updateTransactions[] = $ynabTransaction;
+            }
         }
-        if (!empty($bulkTransactions)) {
-            $this->api->newTransactions($this->budget, $bulkTransactions);
+        if (!empty($newTransactions)) {
+            $this->api->newTransactions($this->budget, $newTransactions);
+        }
+        if (!empty($updateTransactions)) {
+        #    $this->api->updateTransactions($this->budget, $updateTransactions);
         }
     }
 

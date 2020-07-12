@@ -20,8 +20,8 @@ class Transaction
     protected bool $checkmark;
     protected string $creditorId;
     protected string $currency;
-    protected string $endToEndReference;
-    protected string $mandateReference;
+    protected ?string $endToEndReference = null;
+    protected ?string $mandateReference = null;
     protected string $name;
     protected ?string $purpose = null;
     protected \DateTimeInterface $valueDate;
@@ -170,7 +170,7 @@ class Transaction
         $this->currency = $currency;
     }
 
-    public function getEndToEndReference(): string
+    public function getEndToEndReference(): ?string
     {
         return $this->endToEndReference;
     }
@@ -180,7 +180,7 @@ class Transaction
         $this->endToEndReference = $endToEndReference;
     }
 
-    public function getMandateReference(): string
+    public function getMandateReference(): ?string
     {
         return $this->mandateReference;
     }

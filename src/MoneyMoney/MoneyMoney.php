@@ -37,9 +37,16 @@ class MoneyMoney
      */
     public function getTransactions(Account $account, \DateTimeInterface $from): array
     {
-        $result = $this->runScript("tell application \"MoneyMoney\" to export transactions from account \"{$account->getUuid()}\" from date \"{$from->format('Y-m-d')}\" as \"plist\"");
+        $result = $this->runScript(
+            "tell application \"MoneyMoney\" to export transactions from account \"{$account->getUuid()}\" from date \"{$from->format('Y-m-d')}\" as \"plist\""
+        );
 
-        return $this->serializer->denormalize($result['transactions'], Transaction::class.'[]', 'xml', [DateTimeNormalizer::FORMAT_KEY => 'U']);
+        return $this->serializer->denormalize(
+            $result['transactions'],
+            Transaction::class.'[]',
+            'xml',
+            [DateTimeNormalizer::FORMAT_KEY => 'U']
+        );
     }
 
     protected function runScript(string $command)

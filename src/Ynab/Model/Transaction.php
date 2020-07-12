@@ -16,6 +16,7 @@ class Transaction
     private ?string $memo = null;
     private ?string $importId = null;
     private ?string $cleared = null;
+    private bool $deleted = false;
 
     public function __construct(string $accountId, \DateTimeInterface $date, int $amount)
     {
@@ -89,6 +90,9 @@ class Transaction
 
     public function setMemo(?string $memo): void
     {
+        if (mb_strlen($memo) > 200) {
+            $memo = substr($memo, 0, 200);
+        }
         $this->memo = $memo;
     }
 
@@ -110,5 +114,21 @@ class Transaction
     public function setCleared(?string $cleared): void
     {
         $this->cleared = $cleared;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDeleted(): bool
+    {
+        return $this->deleted;
+    }
+
+    /**
+     * @param bool $deleted
+     */
+    public function setDeleted(bool $deleted): void
+    {
+        $this->deleted = $deleted;
     }
 }

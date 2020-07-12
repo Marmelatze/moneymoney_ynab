@@ -6,6 +6,7 @@ use App\Ynab\Model\Budget;
 use App\Ynab\Model\Payee;
 use App\Ynab\Model\Transaction;
 use GuzzleHttp\Client;
+use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Serializer\Normalizer\UnwrappingDenormalizer;
 
 /**
@@ -88,7 +89,9 @@ class YnabApi
 
     public function newTransaction(string $budget, Transaction $transaction)
     {
-        $json = $this->serializer->normalize($transaction, 'json');
+        $json = $this->serializer->normalize($transaction, 'json', [
+            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'
+        ]);
         $result = $this->httpClient->request(
             'POST',
             "budgets/{$budget}/transactions",
@@ -100,9 +103,27 @@ class YnabApi
 
     public function newTransactions(string $budget, array $transactions)
     {
-        $json = $this->serializer->normalize($transactions, 'json');
+        $json = $this->serializer->normalize($transactions, 'json', [
+            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'
+        ]);
+        dump($json);
         $result = $this->httpClient->request(
             'POST',
+            "budgets/{$budget}/transactions",
+            [
+                'json' => ['transactions' => $json],
+            ]
+        );
+        dump(json_decode($result->getBody()->getContents()), true);
+    }
+
+    public function updateTransactions(string $budget, array $transactions)
+    {
+        $json = $this->serializer->normalize($transactions, 'json', [
+            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'
+        ]);
+        $result = $this->httpClient->request(
+            'PATCH',
             "budgets/{$budget}/transactions",
             [
                 'json' => ['transactions' => $json],
@@ -127,4 +148,6 @@ class YnabApi
             [UnwrappingDenormalizer::UNWRAP_PATH => '[data][payees]']
         );
     }
+
+
 }
