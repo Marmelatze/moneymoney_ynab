@@ -51,7 +51,7 @@ class Syncer
             $ynabAccountMap[$account->getId()] = $account;
         }
 
-        $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-5days'));
+        $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-7days'));
         foreach ($ynabTransactions as $transaction) {
             $id = $transaction->getImportId();
             if (null === $id) {
@@ -81,7 +81,7 @@ class Syncer
             return;
         }
         $newTransactions = [];
-        $transactions = $this->moneyMoney->getTransactions($sourceAccount, new \DateTime('-5days'));
+        $transactions = $this->moneyMoney->getTransactions($sourceAccount, new \DateTime('-7days'));
         foreach ($transactions as $transaction) {
             if (!$transaction->isBooked()) {
                 continue;

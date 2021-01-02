@@ -16,7 +16,8 @@ class MoneyMoney
      * @var Serializer
      */
     private $serializer;
-
+    private ?array $transactions = null;
+    
     public function __construct(Serializer $serializer)
     {
         $this->serializer = $serializer;
@@ -37,12 +38,15 @@ class MoneyMoney
      */
     public function getTransactions(Account $account, \DateTimeInterface $from): array
     {
-        $result = $this->runScript(
-            "tell application \"MoneyMoney\" to export transactions from account \"{$account->getUuid()}\" from date \"{$from->format('Y-m-d')}\" as \"plist\""
-        );
+        $list = [];
+        foreach ($this->getAllTransactions($from) as $transaction) {
+            if ($transaction['accountUuid'] === $account->getUuid()) {
+                $list[] = $transaction;
+            }
+        }
 
         return $this->serializer->denormalize(
-            $result['transactions'],
+            $list,
             Transaction::class.'[]',
             'xml',
             [DateTimeNormalizer::FORMAT_KEY => 'U']
@@ -51,12 +55,24 @@ class MoneyMoney
 
     protected function runScript(string $command)
     {
-        $process = new Process(['osascript', '-e', $command]);
+        $process = new Process(['/usr/bin/osascript', '-e', $command]);
         $process->mustRun();
 
         $plist = new CFPropertyList();
         $plist->parse($process->getOutput());
 
         return $plist->toArray();
+    }
+
+    private function getAllTransactions(\DateTimeInterface $from): array
+    {
+        if (null !== $this->transactions) {
+            return $this->transactions;
+        }
+
+        $result = $this->runScript(
+            "tell application \"MoneyMoney\" to export transactions from date \"{$from->format('Y-m-d')}\" as \"plist\""
+        );
+        return $this->transactions = $result['transactions'];
     }
 }

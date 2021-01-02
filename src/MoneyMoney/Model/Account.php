@@ -13,6 +13,11 @@ class Account
     private bool $group;
     private bool $portfolio;
 
+    /**
+     * Account constructor.
+     *
+     * @param array<float, string> $balance
+     */
     public function __construct(string $uuid, string $name, array $balance, bool $group, bool $portfolio)
     {
         $this->uuid = $uuid;
@@ -34,7 +39,7 @@ class Account
         return $this->name;
     }
 
-    public function getBalance(): ?AccountBalance
+    public function getBalance()
     {
         return current($this->balance);
     }
