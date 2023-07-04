@@ -1,4 +1,5 @@
 <?php
+
 namespace App\MoneyMoney\Model;
 
 /**
@@ -10,7 +11,7 @@ class Transaction
     protected string $accountNumber;
     protected string $accountUuid;
     protected float $amount;
-    protected string $bankCode;
+    protected ?string $bankCode = null;
     protected bool $booked;
     protected \DateTimeInterface $bookingDate;
     protected string $bookingText;
@@ -22,7 +23,7 @@ class Transaction
     protected string $currency;
     protected ?string $endToEndReference = null;
     protected ?string $mandateReference = null;
-    protected string $name;
+    protected string $name = '';
     protected ?string $purpose = null;
     protected \DateTimeInterface $valueDate;
 
@@ -70,7 +71,7 @@ class Transaction
         $this->amount = $amount;
     }
 
-    public function getBankCode(): string
+    public function getBankCode(): ?string
     {
         return $this->bankCode;
     }

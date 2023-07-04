@@ -1,4 +1,5 @@
 <?php
+
 namespace App\MoneyMoney\Model;
 
 /**
@@ -12,13 +13,12 @@ class Account
     private array $balance = [];
     private bool $group;
     private bool $portfolio;
+    private array $attributes = [];
 
     /**
      * Account constructor.
-     *
-     * @param array<float, string> $balance
      */
-    public function __construct(string $uuid, string $name, array $balance, bool $group, bool $portfolio)
+    public function __construct(string $uuid, string $name, array $balance, bool $group, bool $portfolio, array $attributes)
     {
         $this->uuid = $uuid;
         $this->name = $name;
@@ -27,6 +27,7 @@ class Account
         }
         $this->group = $group;
         $this->portfolio = $portfolio;
+        $this->attributes = $attributes;
     }
 
     public function getUuid(): string
@@ -52,5 +53,19 @@ class Account
     public function isPortfolio(): bool
     {
         return $this->portfolio;
+    }
+
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
+    public function getYnabAccount(): ?string
+    {
+        if (!isset($this->attributes['YNAB_ACCOUNT'])) {
+            return null;
+        }
+
+        return $this->attributes['YNAB_ACCOUNT'];
     }
 }

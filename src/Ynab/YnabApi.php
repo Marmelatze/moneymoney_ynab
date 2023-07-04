@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Ynab;
 
 use App\Ynab\Model\Account;
@@ -68,6 +69,24 @@ class YnabApi
     /**
      * @throws \GuzzleHttp\Exception\GuzzleException
      *
+     * @return Account
+     */
+    public function getAccount(string $budget, string $accountId)
+    {
+        $result = $this->httpClient->request('GET', "budgets/{$budget}/accounts/{$accountId}");
+        $content = $result->getBody()->getContents();
+
+        return $this->serializer->deserialize(
+            $content,
+            Account::class,
+            'json',
+            [UnwrappingDenormalizer::UNWRAP_PATH => '[data][account]']
+        );
+    }
+
+    /**
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     *
      * @return Transaction[]
      */
     public function getTransactions(string $budget, \DateTimeInterface $since = null)
@@ -90,7 +109,7 @@ class YnabApi
     public function newTransaction(string $budget, Transaction $transaction)
     {
         $json = $this->serializer->normalize($transaction, 'json', [
-            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'
+            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d',
         ]);
         $result = $this->httpClient->request(
             'POST',
@@ -104,7 +123,7 @@ class YnabApi
     public function newTransactions(string $budget, array $transactions)
     {
         $json = $this->serializer->normalize($transactions, 'json', [
-            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'
+            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d',
         ]);
         dump($json);
         $result = $this->httpClient->request(
@@ -120,7 +139,7 @@ class YnabApi
     public function updateTransactions(string $budget, array $transactions)
     {
         $json = $this->serializer->normalize($transactions, 'json', [
-            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d'
+            DateTimeNormalizer::FORMAT_KEY => 'Y-m-d',
         ]);
         $result = $this->httpClient->request(
             'PATCH',
@@ -148,6 +167,4 @@ class YnabApi
             [UnwrappingDenormalizer::UNWRAP_PATH => '[data][payees]']
         );
     }
-
-
 }

@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Ynab\Model;
 
 /**
@@ -91,7 +92,7 @@ class Transaction
     public function setMemo(?string $memo): void
     {
         if (mb_strlen($memo) > 200) {
-            $memo = substr($memo, 0, 200);
+            $memo = mb_substr($memo, 0, 200);
         }
         $this->memo = $memo;
     }
@@ -116,17 +117,11 @@ class Transaction
         $this->cleared = $cleared;
     }
 
-    /**
-     * @return bool
-     */
     public function isDeleted(): bool
     {
         return $this->deleted;
     }
 
-    /**
-     * @param bool $deleted
-     */
     public function setDeleted(bool $deleted): void
     {
         $this->deleted = $deleted;

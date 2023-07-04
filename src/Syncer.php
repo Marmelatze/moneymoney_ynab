@@ -1,8 +1,9 @@
 <?php
+
 namespace App;
 
 use App\MoneyMoney\Model\Account;
-use App\MoneyMoney\MoneyMoney;
+use App\MoneyMoney\MoneyMoneyApi;
 use App\Ynab\Model\Payee;
 use App\Ynab\Model\Transaction;
 use App\Ynab\YnabApiFactory;
@@ -14,9 +15,10 @@ use Psr\Log\LoggerInterface;
  */
 class Syncer
 {
-    const IMPORT_PREFIX = 'MM';
+    public const IMPORT_PREFIX = 'MM';
+    public const LOOKUP_NAMES = ['PayPal', 'Amzn', 'Amazon'];
     private LoggerInterface $logger;
-    private MoneyMoney $moneyMoney;
+    private MoneyMoneyApi $moneyMoney;
     private YnabApiFactory $ynabApiFactory;
     private Ynab\YnabApi $api;
     private string $budget;
@@ -25,12 +27,16 @@ class Syncer
      */
     private array $payees = [];
     private array $ynabTransactions = [];
+    private array $referenceAccounts = [];
 
-    public function __construct(LoggerInterface $logger, MoneyMoney $moneyMoney, YnabApiFactory $ynabApiFactory)
+    private TransactionMatcher $transactionMatcher;
+
+    public function __construct(LoggerInterface $logger, MoneyMoneyApi $moneyMoney, YnabApiFactory $ynabApiFactory, TransactionMatcher $transactionMatcher)
     {
         $this->logger = $logger;
         $this->moneyMoney = $moneyMoney;
         $this->ynabApiFactory = $ynabApiFactory;
+        $this->transactionMatcher = $transactionMatcher;
     }
 
     public function sync(array $config)
@@ -41,17 +47,26 @@ class Syncer
         /** @var Account[] $moneyMoneyAccountMap */
         $moneyMoneyAccountMap = [];
         foreach ($accounts as $account) {
+            if (null === $account->getYnabAccount()) {
+                continue;
+            }
             $moneyMoneyAccountMap[$account->getUuid()] = $account;
+            if ('reference' === $account->getYnabAccount()) {
+                $this->referenceAccounts[] = $moneyMoneyAccountMap[$account->getUuid()];
+            }
         }
 
         $ynabAccounts = $this->api->getAccounts($config['budget']);
         /** @var \App\Ynab\Model\Account[] $ynabAccountMap */
         $ynabAccountMap = [];
         foreach ($ynabAccounts as $account) {
-            $ynabAccountMap[$account->getId()] = $account;
+            if (isset($ynabAccountMap[$account->getName()])) {
+                throw new \RuntimeException('YNAB account '.$account->getName().' is duplicate');
+            }
+            $ynabAccountMap[$account->getName()] = $account;
         }
 
-        $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-7days'));
+        $ynabTransactions = $this->api->getTransactions($this->budget, new \DateTime('-90days'));
         foreach ($ynabTransactions as $transaction) {
             $id = $transaction->getImportId();
             if (null === $id) {
@@ -60,15 +75,15 @@ class Syncer
             $this->ynabTransactions[$transaction->getAccountId()][$id] = $transaction;
         }
         $this->logger->info('Syncing');
-
-        $mapping = $config['mapping'];
-        foreach ($mapping as $source => $target) {
-            if (false === $target) {
+        foreach ($accounts as $account) {
+            if (null === $account->getYnabAccount() || 'reference' === $account->getYnabAccount()) {
                 continue;
             }
-            $sourceAccount = $moneyMoneyAccountMap[$source];
-            $targetAccount = $ynabAccountMap[$target];
-            $this->doSync($sourceAccount, $targetAccount);
+            if (!isset($ynabAccountMap[$account->getYnabAccount()])) {
+                throw new \RuntimeException('YNAB account '.$account->getYnabAccount().' not found for Money Money account '.$account->getName());
+            }
+            $targetAccount = $ynabAccountMap[$account->getYnabAccount()];
+            $this->doSync($account, $targetAccount);
         }
     }
 
@@ -81,7 +96,7 @@ class Syncer
             return;
         }
         $newTransactions = [];
-        $transactions = $this->moneyMoney->getTransactions($sourceAccount, new \DateTime('-7days'));
+        $transactions = $this->moneyMoney->getTransactions($sourceAccount, new \DateTime('-90days'));
         foreach ($transactions as $transaction) {
             if (!$transaction->isBooked()) {
                 continue;
@@ -94,11 +109,14 @@ class Syncer
             $id = implode(':', [
                 self::IMPORT_PREFIX,
                 $transaction->getId(),
-                (int)($transaction->getAmount()*1000),
-                $transaction->getValueDate()->format('Y-m-d')
+                (int) ($transaction->getAmount() * 1000),
+                $transaction->getValueDate()->format('Y-m-d'),
             ]);
             if (isset($this->ynabTransactions[$targetAccount->getId()][$id])) {
                 $ynabTransaction = $this->ynabTransactions[$targetAccount->getId()][$id];
+                if ($ynabTransaction->isApproved()) {
+                    continue;
+                }
             }
             if (null === $ynabTransaction) {
                 $this->logger->info('Creating transaction '.$transaction->getValueDate()->format('Y-m-d').' '.$transaction->getName().' '.$transaction->getPurpose().' ('.$transaction->getAmount().'|'.$transaction->getId());
@@ -106,42 +124,43 @@ class Syncer
             }
             $ynabTransaction->setImportId($id);
             $ynabTransaction->setPayeeName($transaction->getName());
-            if (strlen($ynabTransaction->getMemo()) == 0) {
+
+            if (0 == mb_strlen($ynabTransaction->getMemo())) {
                 $ynabTransaction->setMemo($transaction->getPurpose());
             }
-            if (strlen($ynabTransaction->getMemo()) == 0) {
+            if (0 == mb_strlen($ynabTransaction->getMemo())) {
                 $ynabTransaction->setMemo($transaction->getMandateReference().','.$transaction->getEndToEndReference());
             }
-            $ynabTransaction->setCleared($transaction->isBooked() ? 'cleared' : 'uncleared');
-
-            if ('PayPal' == mb_substr($ynabTransaction->getPayeeName(), 0, 6) && preg_match('/Ihr Einkauf bei (.*?)$/si', $ynabTransaction->getMemo(), $matches)) {
-                $ynabTransaction->setPayeeName($matches[1]);
-                $ynabTransaction->setMemo(null);
+            foreach (self::LOOKUP_NAMES as $name) {
+                if (str_starts_with($ynabTransaction->getPayeeName(), $name)) {
+                    $this->lookupReference($transaction, $ynabTransaction);
+                }
             }
+
+            $ynabTransaction->setCleared('cleared');
+
             if (null === $ynabTransaction->getId()) {
-                #$newTransactions[] = $ynabTransaction;
-            #    $this->api->newTransaction($this->budget, $ynabTransaction);
+                // $newTransactions[] = $ynabTransaction;
+                //    $this->api->newTransaction($this->budget, $ynabTransaction);
                 try {
                     $this->api->newTransaction($this->budget, $ynabTransaction);
                 } catch (ClientException $e) {
-                    if ($e->getResponse()->getStatusCode() == 409) {
+                    if (409 == $e->getResponse()->getStatusCode()) {
                         $this->logger->info('Transation already exists. Updating');
-                        $updateTransactions[] = $ynabTransaction;
+                        // $updateTransactions[] = $ynabTransaction;
                     } else {
                         throw $e;
                     }
                 }
-
             } else {
                 $updateTransactions[] = $ynabTransaction;
             }
         }
-        if (!empty($newTransactions)) {
-            $this->api->newTransactions($this->budget, $newTransactions);
-        }
         if (!empty($updateTransactions)) {
-        #    $this->api->updateTransactions($this->budget, $updateTransactions);
+            $this->api->updateTransactions($this->budget, $updateTransactions);
         }
+        // $ynabAccount = $this->api->getAccount($this->budget, $targetAccount->getId());
+        // $this->syncAmount($sourceAccount, $ynabAccount);
     }
 
     private function syncAmount(Account $sourceAccount, Ynab\Model\Account $targetAccount)
@@ -172,5 +191,10 @@ class Syncer
         }
 
         return $this->payees[$name] ?? null;
+    }
+
+    private function lookupReference(MoneyMoney\Model\Transaction $transaction, ?Transaction $ynabTransaction)
+    {
+        $this->transactionMatcher->match($this->referenceAccounts, $transaction, $ynabTransaction);
     }
 }

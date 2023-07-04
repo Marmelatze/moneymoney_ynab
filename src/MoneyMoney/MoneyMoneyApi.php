@@ -1,4 +1,5 @@
 <?php
+
 namespace App\MoneyMoney;
 
 use App\MoneyMoney\Model\Account;
@@ -10,14 +11,14 @@ use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 /**
  * Class MoneyMoney.
  */
-class MoneyMoney
+class MoneyMoneyApi
 {
     /**
      * @var Serializer
      */
     private $serializer;
     private ?array $transactions = null;
-    
+
     public function __construct(Serializer $serializer)
     {
         $this->serializer = $serializer;
@@ -38,9 +39,17 @@ class MoneyMoney
      */
     public function getTransactions(Account $account, \DateTimeInterface $from): array
     {
+        return $this->getTransactionsByUUID($account->getUuid(), $from);
+    }
+
+    /**
+     * @return Transaction[]
+     */
+    public function getTransactionsByUUID(string $account, \DateTimeInterface $from): array
+    {
         $list = [];
         foreach ($this->getAllTransactions($from) as $transaction) {
-            if ($transaction['accountUuid'] === $account->getUuid()) {
+            if ($transaction['accountUuid'] === $account) {
                 $list[] = $transaction;
             }
         }
@@ -73,6 +82,7 @@ class MoneyMoney
         $result = $this->runScript(
             "tell application \"MoneyMoney\" to export transactions from date \"{$from->format('Y-m-d')}\" as \"plist\""
         );
+
         return $this->transactions = $result['transactions'];
     }
 }

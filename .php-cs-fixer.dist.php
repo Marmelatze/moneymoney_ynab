@@ -10,14 +10,16 @@ $finder = PhpCsFixer\Finder::create()
     ->notPath('bin/console')
     ->notPath('public/index.php')
 ;
-return PhpCsFixer\Config::create()
+$config = new PhpCsFixer\Config();
+
+return $config
     ->setRiskyAllowed(true)
     ->setRules([
         '@Symfony' => true,
         '@Symfony:risky' => true,
         'array_syntax' => ['syntax' => 'short'],
         'linebreak_after_opening_tag' => true,
-        'no_blank_lines_before_namespace' => true,
+        #'no_blank_lines_before_namespace' => true,
         'single_blank_line_before_namespace' => false,
         'mb_str_functions' => true,
         'no_php4_constructor' => true,

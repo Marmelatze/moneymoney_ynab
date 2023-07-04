@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Ynab;
 
 use Symfony\Component\Serializer\Serializer as SymfonySerializer;
@@ -13,12 +14,12 @@ class Serializer implements SerializerInterface
         $this->serializer = new SymfonySerializer($normalizers, $encoders);
     }
 
-    public function serialize($data, $format, array $context = [])
+    public function serialize($data, $format, array $context = []): string
     {
         return $this->serializer->serialize($data, $format, $context);
     }
 
-    public function deserialize($data, $type, $format, array $context = [])
+    public function deserialize($data, $type, $format, array $context = []): mixed
     {
         return $this->serializer->deserialize($data, $type, $format, $context);
     }

@@ -1,7 +1,7 @@
 <?php
+
 namespace App\Command;
 
-use App\MoneyMoney\MoneyMoney;
 use App\Ynab\YnabApi;
 use App\Ynab\YnabApiFactory;
 use Symfony\Component\Console\Command\Command;
@@ -14,18 +14,14 @@ use Symfony\Component\Filesystem\Filesystem;
 class SetupCommand extends Command
 {
     protected static $defaultName = 'app:setup';
-    private string $projectDir;
-
-    private MoneyMoney $moneyMoney;
 
     private Filesystem $filesystem;
 
     private YnabApiFactory $ynabApiFactory;
 
-    public function __construct(MoneyMoney $moneyMoney, Filesystem $filesystem, YnabApiFactory $ynabApiFactory)
+    public function __construct(Filesystem $filesystem, YnabApiFactory $ynabApiFactory)
     {
         parent::__construct();
-        $this->moneyMoney = $moneyMoney;
         $this->filesystem = $filesystem;
         $this->ynabApiFactory = $ynabApiFactory;
     }
@@ -34,8 +30,13 @@ class SetupCommand extends Command
     {
         $this
             ->setDescription('Add a short description for your command')
-            ->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'path to config', posix_getpwuid(posix_getuid())['dir'].'/.config/ynab_sync/config.json')
-        ;
+            ->addOption(
+                'config',
+                'c',
+                InputOption::VALUE_REQUIRED,
+                'path to config',
+                posix_getpwuid(posix_getuid())['dir'].'/.config/ynab_sync/config.json'
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -65,40 +66,7 @@ class SetupCommand extends Command
         $config['ynab-token'] = $token;
         $config['budget'] = $io->choice('Budget', $budgets, $config['budget'] ?? null);
 
-        $accounts = $this->moneyMoney->getAccounts();
-        $accountList = [];
-        $accountIds = [];
-        foreach ($accounts as $account) {
-            if ($account->isGroup()) {
-                continue;
-            }
-            $accountIds[] = $account->getUuid();
-            $accountList[] = $account->getName();
-        }
-        $ynabAccounts = $api->getAccounts($config['budget']);
-        $ynabAccountsList = [];
-        foreach ($ynabAccounts as $account) {
-            $ynabAccountsList[$account->getId()] = $account->getName();
-        }
-        $io->section('Accounts to sync');
-        $mapping = $config['mapping'] ?? [];
-        foreach ($accounts as $account) {
-            if ($account->isGroup()) {
-                continue;
-            }
-            $value = $mapping[$account->getUuid()] ?? null;
-            $sync = $io->confirm('Sync account '.$account->getName(), false !== $value);
-            if (!$sync) {
-                $mapping[$account->getUuid()] = false;
-                continue;
-            }
-            $syncAccount = $io->choice('YNAB Account', $ynabAccountsList, $value);
-            $mapping[$account->getUuid()] = $syncAccount;
-            unset($ynabAccountsList[$syncAccount]);
-        }
-        $config['mapping'] = $mapping;
-
-        $this->filesystem->dumpFile($configFile, json_encode($config, JSON_PRETTY_PRINT));
+        $this->filesystem->dumpFile($configFile, json_encode($config, \JSON_PRETTY_PRINT));
 
         return 0;
     }

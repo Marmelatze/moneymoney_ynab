@@ -59,3 +59,7 @@ services:
             - '@property_info'
             - '@serializer.mapping.class_discriminator_resolver'
             - null
+
+    App\TransactionMatcher:
+        arguments:
+            $matchFile: '~/.config/ynab_sync/matches.json'

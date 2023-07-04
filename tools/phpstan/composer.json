@@ -1,0 +1,8 @@
+{
+    "require-dev": {
+        "phpstan/phpstan": "^1.10"
+    },
+    "require": {
+        "phpstan/phpstan-symfony": "^1.3"
+    }
+}
