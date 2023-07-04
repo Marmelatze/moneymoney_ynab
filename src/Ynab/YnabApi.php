@@ -22,7 +22,7 @@ class YnabApi
         $this->serializer = $serializer;
         $this->httpClient = new Client(
             [
-                'base_uri' => 'https://api.youneedabudget.com/v1/',
+                'base_uri' => 'https://api.ynab.com/v1/',
                 'headers' => ['Authorization' => 'Bearer '.$token],
             ]
         );
